@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to JPG Converter</title>
+    
+    <style>
+        /* --- General & Light Mode Styles --- */
+        :root {
+            --bg-color: #f4f7f6;
+            --container-bg: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #555;
+            --border-color: #e0e0e0;
+            --input-bg: #ffffff;
+            --button-gradient: linear-gradient(45deg, #3498db, #2980b9);
+            --button-disabled-bg: #bdc3c7;
+            --shadow-color: rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 2rem;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--container-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px var(--shadow-color);
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        h1 {
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-top: 0;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .toolbar-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        input[type="number"] {
+            width: 60px;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        input[type="range"] {
+            width: 120px;
+        }
+
+        button, .custom-file-upload {
+            padding: 10px 20px;
+            border: none;
+            background: var(--button-gradient);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        
+        #theme-toggle-btn { /* NEW: Style for the theme button */
+            padding: 10px;
+            font-size: 1.2rem;
+            line-height: 1;
+            margin-left: auto; /* Pushes it to the right */
+        }
+
+        button:hover, .custom-file-upload:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+        }
+        
+        button:disabled {
+            background: var(--button-disabled-bg);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        #pdf-preview {
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        #status-message {
+            color: #7f8c8d;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        /* --- NEW: Dark Mode Styles --- */
+        body.dark-mode {
+            --bg-color: #121212;
+            --container-bg: #1e1e1e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-color: #333;
+            --input-bg: #2a2a2a;
+            --button-gradient: linear-gradient(45deg, #4e54c8, #8f94fb);
+            --button-disabled-bg: #444;
+            --shadow-color: rgba(0,0,0,0.5);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>PDF to JPG Converter</h1>
+        <p>Select a PDF, choose a page number and quality, then download as a JPG.</p>
+
+        <div class="toolbar">
+            <label for="file-upload" class="custom-file-upload">
+                Choose PDF
+            </label>
+            <input id="file-upload" type="file" accept=".pdf"/>
+            
+            <div class="toolbar-item">
+                <label for="page-num-input">Page:</label>
+                <input id="page-num-input" type="number" value="1" min="1" disabled>
+            </div>
+            
+             <div class="toolbar-item">
+                <label for="quality-slider">Quality: <span id="quality-value">92</span>%</label>
+                <input id="quality-slider" type="range" min="10" max="100" value="92" disabled>
+            </div>
+
+            <button id="download-btn" disabled>Download JPG</button>
+            
+            <button id="theme-toggle-btn" title="Toggle Theme">🌙</button>
+        </div>
+
+        <div id="pdf-preview">
+            <p id="status-message">Please select a PDF file to begin.</p>
+            <canvas id="pdf-canvas" style="display: none;"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+
+    <script>
+        // Set the workerSrc for PDF.js. This is a required step.
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+
+        // --- DOM Elements ---
+        const fileUpload = document.getElementById('file-upload');
+        const pageNumInput = document.getElementById('page-num-input');
+        const qualitySlider = document.getElementById('quality-slider');
+        const qualityValueSpan = document.getElementById('quality-value');
+        const downloadBtn = document.getElementById('download-btn');
+        const canvas = document.getElementById('pdf-canvas');
+        const statusMessage = document.getElementById('status-message');
+        const themeToggleBtn = document.getElementById('theme-toggle-btn'); // NEW
+        const ctx = canvas.getContext('2d');
+
+        // --- State Management ---
+        let pdfDoc = null;
+        let currentPageNum = 1;
+
+        // --- Functions ---
+
+        /** Renders a specific page of the PDF onto the canvas. */
+        const renderPage = (num) => {
+            pdfDoc.getPage(num).then(page => {
+                const viewport = page.getViewport({ scale: 1.5 });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                page.render(renderContext).promise.then(() => {
+                    canvas.style.display = 'block';
+                    statusMessage.style.display = 'none';
+                });
+            });
+            currentPageNum = num;
+        };
+        
+        /** Toggles the UI controls between enabled/disabled state. */
+        const setControlsDisabled = (disabled) => {
+            pageNumInput.disabled = disabled;
+            qualitySlider.disabled = disabled;
+            downloadBtn.disabled = disabled;
+        };
+        
+        // --- NEW: Theme Management Logic ---
+
+        const applyTheme = (theme) => {
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeToggleBtn.textContent = '☀️'; // Sun icon
+            } else {
+                document.body.classList.remove('dark-mode');
+                themeToggleBtn.textContent = '🌙'; // Moon icon
+            }
+        };
+
+        themeToggleBtn.addEventListener('click', () => {
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            const newTheme = isDarkMode ? 'light' : 'dark';
+            applyTheme(newTheme);
+            localStorage.setItem('theme', newTheme); // Save preference
+        });
+
+        // On page load, check for saved theme preference
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(savedTheme);
+        });
+
+
+        // --- Event Listeners ---
+
+        // 1. File Upload Event
+        fileUpload.addEventListener('change', event => {
+            const file = event.target.files[0];
+            if (!file || file.type !== 'application/pdf') {
+                if(file) alert('Please select a PDF file.');
+                return;
+            }
+
+            const fileReader = new FileReader();
+            fileReader.onload = function() {
+                statusMessage.textContent = 'Loading PDF...';
+                statusMessage.style.display = 'block';
+                canvas.style.display = 'none';
+
+                const typedarray = new Uint8Array(this.result);
+                pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                    pdfDoc = pdf;
+                    pageNumInput.max = pdfDoc.numPages;
+                    pageNumInput.value = 1;
+                    renderPage(1);
+                    setControlsDisabled(false);
+                }).catch(err => {
+                    alert('Error loading PDF: ' + err.message);
+                    statusMessage.textContent = 'Failed to load PDF.';
+                });
+            };
+            fileReader.readAsArrayBuffer(file);
+        });
+
+        // 2. Page Number Change Event
+        pageNumInput.addEventListener('input', () => {
+            let newPageNum = parseInt(pageNumInput.value);
+            if (pdfDoc && newPageNum > 0 && newPageNum <= pdfDoc.numPages) {
+                renderPage(newPageNum);
+            }
+        });
+        
+        // 3. Quality Slider Change Event
+        qualitySlider.addEventListener('input', () => {
+            qualityValueSpan.textContent = qualitySlider.value;
+        });
+
+        // 4. Download Button Click Event
+        downloadBtn.addEventListener('click', () => {
+            if (!pdfDoc) return;
+            const quality = parseInt(qualitySlider.value) / 100;
+            const imageDataUrl = canvas.toDataURL('image/jpeg', quality);
+            const link = document.createElement('a');
+            link.href = imageDataUrl;
+            link.download = `page_${currentPageNum}_quality_${qualitySlider.value}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    </script>
+</body>
+</html>
